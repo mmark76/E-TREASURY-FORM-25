@@ -6,6 +6,7 @@
   <title>e-Treasury Form 25</title>
   <link rel="stylesheet" href="src/styles/base.css">
   <link rel="stylesheet" href="src/styles/app.css">
+  <link rel="stylesheet" href="src/styles/official-template.css" data-official-template-styles>
   <link rel="stylesheet" href="src/styles/print.css" media="print">
 </head>
 <body>
@@ -194,58 +195,7 @@
         <button id="download-pdf" class="button button-primary" type="button">Λήψη PDF</button>
       </div>
       <h2 id="preview-title" class="no-print">Προεπισκόπηση επίσημου εντύπου</h2>
-      <article id="invoice-preview" class="official-form" aria-label="Έντυπο Γ.Λ.25">
-        <img class="official-form-background" src="src/assets/gl25-template.svg" alt="Επίσημο έντυπο Γ.Λ.25">
-
-        <div class="overlay-layer" aria-hidden="true">
-          <span class="overlay-text field-invoice-number align-center" data-output="invoiceNumber"></span>
-
-          <span class="overlay-text field-department" data-output="department"></span>
-          <span class="overlay-text field-chapter" data-output="chapterCode"></span>
-          <span class="overlay-text field-vat-registration" data-output="vatRegistration"></span>
-          <span class="overlay-text field-issue-day align-center" data-output="issueDay"></span>
-          <span class="overlay-text field-issue-month align-center" data-output="issueMonth"></span>
-          <span class="overlay-text field-issue-year align-center" data-output="issueYear"></span>
-          <span class="overlay-text field-service-address" data-output="serviceAddress"></span>
-
-          <span class="overlay-text field-debtor-name" data-output="debtorName"></span>
-          <span class="overlay-text field-debtor-tax-id" data-output="debtorTaxId"></span>
-          <span class="overlay-text field-debtor-address" data-output="debtorAddress"></span>
-          <span class="overlay-text field-postal-code align-center" data-output="postalCode"></span>
-          <span class="overlay-text field-phone align-center" data-output="phone"></span>
-          <span class="overlay-text field-payment-type" data-output="paymentType"></span>
-
-          <div class="overlay-stack field-description">
-            <span class="overlay-text block strong" data-output="description"></span>
-            <span class="overlay-text block" data-output="billingPeriod"></span>
-          </div>
-          <span class="overlay-text field-quantity align-center">1</span>
-          <span class="overlay-text field-unit-euros align-right" data-output="netEuros"></span>
-          <span class="overlay-text field-unit-cents align-center" data-output="netCents"></span>
-          <span class="overlay-text field-net-euros align-right" data-output="netEuros"></span>
-          <span class="overlay-text field-net-cents align-center" data-output="netCents"></span>
-          <span class="overlay-text field-vat-rate align-center" data-output="vatRate"></span>
-          <span class="overlay-text field-vat-euros align-right" data-output="vatEuros"></span>
-          <span class="overlay-text field-vat-cents align-center" data-output="vatCents"></span>
-
-          <span class="overlay-text field-total1-euros align-right" data-output="netEuros"></span>
-          <span class="overlay-text field-total1-cents align-center" data-output="netCents"></span>
-          <span class="overlay-text field-total2-euros align-right" data-output="vatEuros"></span>
-          <span class="overlay-text field-total2-cents align-center" data-output="vatCents"></span>
-          <span class="overlay-text field-gross-euros align-right" data-output="grossEuros"></span>
-          <span class="overlay-text field-gross-cents align-center" data-output="grossCents"></span>
-
-          <span class="overlay-text field-amount-words" data-output="amountInWords"></span>
-          <span class="overlay-text field-signatory align-center" data-output="signatoryName"></span>
-          <span class="overlay-text field-sign-date align-center" data-output="signDate"></span>
-          <span class="overlay-text field-analysis-vat-rate align-center" data-output="vatRate"></span>
-          <span class="overlay-text field-analysis-gross-euros align-right" data-output="grossEuros"></span>
-          <span class="overlay-text field-analysis-gross-cents align-center" data-output="grossCents"></span>
-          <span class="overlay-text field-analysis-total-euros align-right" data-output="grossEuros"></span>
-          <span class="overlay-text field-analysis-total-cents align-center" data-output="grossCents"></span>
-          <span class="overlay-text field-revenue-account align-center" data-output="revenueAccount"></span>
-        </div>
-      </article>
+      <article id="invoice-preview" class="official-form" aria-label="Έντυπο Γ.Λ.25"></article>
     </section>
       </div>
     </section>
