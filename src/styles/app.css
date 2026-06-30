@@ -48,6 +48,118 @@ body {
   color: #172033;
 }
 
+.btn-finalize-invoice {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  min-height: 3.4rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid #198754;
+  background: #198754;
+  color: #ffffff;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.btn-finalize-invoice:hover {
+  background: #157347;
+  border-color: #157347;
+}
+
+.btn-finalize-invoice:focus-visible {
+  outline: 3px solid rgba(25, 135, 84, 0.35);
+  outline-offset: 2px;
+}
+
+.btn-finalize-invoice:disabled {
+  border-color: #8bbfa4;
+  background: #8bbfa4;
+  color: #ffffff;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.btn-cancel-invoice {
+  border: 1px solid #c43a3a;
+  background: #fff7f7;
+  color: #9d2c2c;
+  font-weight: 800;
+}
+
+.btn-cancel-invoice:hover {
+  border-color: #9d2c2c;
+  background: #ffe7e7;
+}
+
+.btn-cancel-invoice:focus-visible {
+  outline: 3px solid rgba(196, 58, 58, 0.28);
+  outline-offset: 2px;
+}
+
+.btn-cancel-invoice:disabled {
+  border-color: #e1a6a6;
+  background: #fff4f4;
+  color: #b97878;
+  cursor: not-allowed;
+}
+
+.active-invoice-status {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(23, 32, 51, 0.06);
+}
+
+.active-invoice-status[hidden] {
+  display: none;
+}
+
+.active-invoice-number,
+.archive-invoice-number {
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.invoice-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.invoice-status-reserved {
+  background: #fff7d6;
+  color: #6e4b00;
+}
+
+.invoice-status-issued {
+  background: #e9f8ef;
+  color: #155c32;
+}
+
+.invoice-status-cancelled {
+  background: #ffe8e8;
+  color: #9d2c2c;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -258,8 +370,9 @@ body {
 }
 
 .invoice-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
   gap: 0.75rem;
   margin: 0 0 0.8rem;
   padding: 0.8rem;
@@ -267,6 +380,16 @@ body {
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(23, 32, 51, 0.08);
+}
+
+.invoice-actions .button {
+  flex: 1 1 9rem;
+  min-width: min(100%, 9rem);
+}
+
+.invoice-actions .btn-finalize-invoice {
+  flex: 1.5 1 18rem;
+  min-width: min(100%, 18rem);
 }
 
 .workspace[data-active-view="customers"] form,
@@ -764,6 +887,13 @@ body.page-theme-sage .settings-dialog {
   .invoice-actions .button {
     padding: 0.55rem 0.35rem;
     font-size: 0.78rem;
+  }
+
+  .invoice-actions .btn-finalize-invoice {
+    flex-basis: 100%;
+    min-height: 3.4rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.85rem;
   }
 
   .app-footer {

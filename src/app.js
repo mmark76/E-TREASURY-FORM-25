@@ -16,8 +16,9 @@ import {
 } from './features/invoice-archive/storage.js';
 import { APP_VERSION_LABEL } from './config/version.js';
 import { buildShortInvoiceIdentifier } from './shared/invoice-number.js';
+import { getInvoiceStatusPresentation } from './shared/invoice-status.js';
 import { getFormValues } from './shared/form-state.js';
-import { readJson, writeJson, removeStoredValue } from './shared/storage.js';
+import { readJson, writeJson } from './shared/storage.js';
 import { getCurrentIssuerUnitCode, getCurrentServiceId, sanitizeServiceId } from './shared/service-identity.js';
 import {
   applyEmployeeProfileToForm,
@@ -32,6 +33,27 @@ import {
 import { initializeTabCoordination, TAB_ID, withInvoiceIssuanceLock } from './shared/tab-coordination.js';
 
 const DRAFT_KEY = 'eTreasury.form25.draft.v1';
+const DEFAULT_DESCRIPTION = 'ΚΑΤΑΝΑΛΩΣΗ ΗΛΕΚΤΡΙΚΟΥ ΡΕΥΜΑΤΟΣ';
+const DEFAULT_NET_AMOUNT = '0.00';
+const DEFAULT_VAT_RATE = '19';
+const INVOICE_CONTENT_FIELD_DEFAULTS = {
+  currentCustomerSelect: '',
+  issueDate: '',
+  debtorName: '',
+  debtorTaxId: '',
+  debtorAddress: '',
+  postalCode: '',
+  phone: '',
+  spaceName: '',
+  description: DEFAULT_DESCRIPTION,
+  billingPeriod: '',
+  netAmount: DEFAULT_NET_AMOUNT,
+  vatRate: DEFAULT_VAT_RATE,
+  vatAmount: DEFAULT_NET_AMOUNT,
+  grossAmount: DEFAULT_NET_AMOUNT,
+  paymentType: 'Πλήρης εξόφληση',
+  signDate: ''
+};
 const GREEK_MONTHS = [
   'ΙΑΝΟΥΑΡΙΟΣ', 'ΦΕΒΡΟΥΑΡΙΟΣ', 'ΜΑΡΤΙΟΣ', 'ΑΠΡΙΛΙΟΣ', 'ΜΑΪΟΣ', 'ΙΟΥΝΙΟΣ',
   'ΙΟΥΛΙΟΣ', 'ΑΥΓΟΥΣΤΟΣ', 'ΣΕΠΤΕΜΒΡΙΟΣ', 'ΟΚΤΩΒΡΙΟΣ', 'ΝΟΕΜΒΡΙΟΣ', 'ΔΕΚΕΜΒΡΙΟΣ'
@@ -94,6 +116,26 @@ function saveDraft(form) {
   writeJson(DRAFT_KEY, getFormValues(form));
 }
 
+function clearInvoiceContentFields(form) {
+  Object.entries(INVOICE_CONTENT_FIELD_DEFAULTS).forEach(([id, value]) => {
+    const field = form.querySelector(`#${CSS.escape(id)}`);
+    if (field) field.value = value;
+  });
+  delete form.dataset.customerId;
+  setAutomaticDefaults();
+  updateChargeCalculationFields(form);
+}
+
+function hasInvoiceContentFields(form) {
+  return Object.entries(INVOICE_CONTENT_FIELD_DEFAULTS).some(([id, defaultValue]) => {
+    const field = form.querySelector(`#${CSS.escape(id)}`);
+    if (!field) return false;
+    const value = String(field.value || '').trim();
+    if (id === 'issueDate' || id === 'signDate' || id === 'billingPeriod') return false;
+    return value !== String(defaultValue || '').trim();
+  }) || Boolean(form.dataset.customerId);
+}
+
 function updateChargeCalculationFields(form) {
   const netAmount = form.querySelector('#netAmount');
   const vatRate = form.querySelector('#vatRate');
@@ -116,6 +158,12 @@ function employeeScopeForForm(form) {
     issuerUnitId: getCurrentServiceId(form),
     employeeId: employeeProfileFromForm(form).employeeId
   };
+}
+
+function currentInvoiceStatus(form, reservation, issuedFormNumber) {
+  if (form?.dataset.invoiceStatus) return form.dataset.invoiceStatus;
+  if (reservation) return 'reserved';
+  return issuedFormNumber ? 'issued' : 'reserved';
 }
 
 function employeeHasInvoices(form) {
@@ -343,7 +391,13 @@ function updateInvoiceNumberDisplay() {
   const numberRange = document.getElementById('invoice-number-range');
   const numberWarning = document.getElementById('invoice-number-warning');
   const numberStatus = document.getElementById('invoice-number-status');
-  const registerButton = document.querySelector('.invoice-archive-panel .button-primary');
+  const activeStatus = document.getElementById('active-invoice-status');
+  const activeStatusNumber = document.getElementById('active-invoice-status-number');
+  const activeStatusBadge = document.getElementById('active-invoice-status-badge');
+  const activeStatusScreenReader = document.getElementById('active-invoice-status-sr');
+  const clearButton = document.getElementById('clear-form');
+  const registerButton = document.getElementById('register-invoice');
+  const cancelInvoiceButton = document.getElementById('cancel-invoice');
 
   if (issuerUnitOutput) issuerUnitOutput.textContent = getCurrentIssuerUnitCode(form);
   if (employeeCodeOutput) employeeCodeOutput.textContent = profile.employeeCode || '-';
@@ -351,18 +405,32 @@ function updateInvoiceNumberDisplay() {
     employeeCode: profile.employeeCode,
     invoiceNumber: form?.querySelector('#invoiceNumber')?.value
   });
+  const displayedNumber = reservation?.shortInvoiceIdentifier || issuedFormNumber;
+  const status = currentInvoiceStatus(form, reservation, issuedFormNumber);
+  const statusPresentation = getInvoiceStatusPresentation(status);
   if (nextNumber) nextNumber.textContent = reservation?.shortInvoiceIdentifier || issuedFormNumber || (state.exhausted ? '' : state.formattedNextNumber);
   if (numberRange) numberRange.textContent = `${state.minimumNumber}-${state.maximumNumber}`;
-  if (numberStatus) numberStatus.textContent = reservation
-    ? 'Προσχέδιο — δεν έχει εκδοθεί ακόμη'
-    : issuedFormNumber ? 'Εκδόθηκε' : '';
+  if (numberStatus) numberStatus.textContent = displayedNumber ? statusPresentation.label : '';
   if (numberWarning) {
     numberWarning.hidden = !state.exhausted;
     numberWarning.textContent = state.exhausted
       ? 'Η προσωπική σειρά αρίθμησης 00001–99999 έχει εξαντληθεί. Δεν μπορούν να εκδοθούν άλλα τιμολόγια με τον συγκεκριμένο κωδικό υπαλλήλου.'
       : '';
   }
-  if (registerButton) registerButton.disabled = state.exhausted;
+  if (activeStatus) activeStatus.hidden = !displayedNumber;
+  if (activeStatusNumber) activeStatusNumber.textContent = displayedNumber || '';
+  if (activeStatusBadge) {
+    activeStatusBadge.classList.remove('invoice-status-reserved', 'invoice-status-issued', 'invoice-status-cancelled');
+    activeStatusBadge.classList.add(statusPresentation.className);
+    activeStatusBadge.textContent = displayedNumber ? statusPresentation.label : '';
+    activeStatusBadge.setAttribute('aria-label', statusPresentation.accessibleLabel);
+  }
+  if (activeStatusScreenReader) activeStatusScreenReader.textContent = displayedNumber
+    ? `${displayedNumber}. ${statusPresentation.accessibleLabel}.`
+    : '';
+  if (clearButton) clearButton.disabled = statusPresentation.status === 'cancelled';
+  if (registerButton) registerButton.disabled = state.exhausted || statusPresentation.status !== 'reserved' || !reservation;
+  if (cancelInvoiceButton) cancelInvoiceButton.disabled = statusPresentation.status !== 'reserved' || !reservation;
   if (form) updateReservationScopeLock(form);
 }
 
@@ -408,6 +476,7 @@ function initializeCurrentCustomerSelector({ form, renderInvoicePreview, onFormU
 function initializeApp() {
   const form = document.getElementById('invoice-form');
   const clearButton = document.getElementById('clear-form');
+  const cancelInvoiceButton = document.getElementById('cancel-invoice');
   const printButton = document.getElementById('print-form');
   const downloadPdfButton = document.getElementById('download-pdf');
   const workspace = document.querySelector('.workspace');
@@ -434,6 +503,8 @@ function initializeApp() {
   function applyReservationToForm(reservation) {
     const invoiceNumber = form.querySelector('#invoiceNumber');
     if (invoiceNumber && reservation?.formattedInvoiceNumber) invoiceNumber.value = reservation.formattedInvoiceNumber;
+    form.dataset.invoiceStatus = 'reserved';
+    delete form.dataset.loadedArchiveRecordId;
     saveDraft(form);
     previewHasInvoiceData = true;
     updateInvoiceNumberDisplay();
@@ -570,28 +641,55 @@ function initializeApp() {
 
   clearButton.addEventListener('click', async () => {
     const currentReservation = findActiveInvoiceReservation(employeeScopeForForm(form), readInvoiceArchive());
-    const confirmed = window.confirm(currentReservation
-      ? `Ο αριθμός ${currentReservation.shortInvoiceIdentifier || currentReservation.formattedInvoiceNumber} έχει ήδη δεσμευτεί. Αν καθαρίσετε το προσχέδιο, θα καταγραφεί ως ακυρωμένος και δεν θα επαναχρησιμοποιηθεί. Να συνεχίσουμε;`
-      : 'Να καθαριστούν τα στοιχεία της τρέχουσας φόρμας; Τα αποθηκευμένα πρότυπα θα παραμείνουν.');
-    if (!confirmed) return;
-
-    if (currentReservation) {
-      const cancelled = await cancelCurrentReservation({ reason: 'clear-form' });
-      if (!cancelled?.ok) {
-        window.alert('Δεν ήταν δυνατή η ακύρωση του δεσμευμένου αριθμού. Η φόρμα δεν καθαρίστηκε.');
-        return;
-      }
+    const reservedIdentifier = currentReservation?.shortInvoiceIdentifier || currentReservation?.formattedInvoiceNumber || '';
+    if (hasInvoiceContentFields(form)) {
+      const message = reservedIdentifier
+        ? `Να καθαριστούν τα πεδία του τιμολογίου; Ο δεσμευμένος αριθμός ${reservedIdentifier} θα παραμείνει ενεργός.`
+        : 'Να καθαριστούν τα πεδία του τιμολογίου;';
+      if (!window.confirm(message)) return;
     }
 
-    removeStoredValue(DRAFT_KEY);
-    form.reset();
-    setAutomaticDefaults();
-    updateChargeCalculationFields(form);
+    clearInvoiceContentFields(form);
     saveDraft(form);
-    previewHasInvoiceData = false;
+    previewHasInvoiceData = true;
     updateInvoiceNumberDisplay();
     renderCurrentPreview();
-    void ensureActiveInvoiceReservation();
+  });
+
+  cancelInvoiceButton?.addEventListener('click', async () => {
+    const currentReservation = findActiveInvoiceReservation(employeeScopeForForm(form), readInvoiceArchive());
+    const reservedIdentifier = currentReservation?.shortInvoiceIdentifier || currentReservation?.formattedInvoiceNumber || '';
+    if (!currentReservation) {
+      window.alert('Δεν υπάρχει ενεργό προαριθμημένο draft για ακύρωση.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Το τιμολόγιο ${reservedIdentifier} θα καταχωριστεί ως ακυρωμένο και ο αριθμός δεν θα χρησιμοποιηθεί ξανά. Θέλετε να συνεχίσετε;`);
+    if (!confirmed) return;
+
+    cancelInvoiceButton.disabled = true;
+    try {
+      const cancelled = await cancelCurrentReservation({ reason: 'cancel-invoice' });
+      if (!cancelled?.ok) {
+        window.alert('Δεν ήταν δυνατή η ακύρωση του δεσμευμένου αριθμού. Η φόρμα δεν καθαρίστηκε και δεν αποδόθηκε νέος αριθμός.');
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('invoice-archive:updated'));
+      window.dispatchEvent(new CustomEvent('invoice-archive:external-update'));
+
+      clearInvoiceContentFields(form);
+      const invoiceNumber = form.querySelector('#invoiceNumber');
+      if (invoiceNumber) invoiceNumber.value = '';
+      form.dataset.invoiceStatus = 'reserved';
+      delete form.dataset.loadedArchiveRecordId;
+      saveDraft(form);
+      previewHasInvoiceData = false;
+      updateInvoiceNumberDisplay();
+      renderCurrentPreview();
+      await ensureActiveInvoiceReservation();
+    } finally {
+      cancelInvoiceButton.disabled = false;
+    }
   });
 
   printButton.addEventListener('click', () => {

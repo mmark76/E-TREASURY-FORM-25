@@ -52,6 +52,8 @@ function dispatchArchiveUpdated(form, renderOfficialTemplate, onFormUpdated) {
 function loadRecordToForm(record, form, renderOfficialTemplate, onFormUpdated) {
   setFormValues(form, record.formValues);
   form.dataset.customerId = record.customerId || '';
+  form.dataset.invoiceStatus = record.status || 'issued';
+  form.dataset.loadedArchiveRecordId = record.id || '';
   dispatchArchiveUpdated(form, renderOfficialTemplate, onFormUpdated);
 }
 
@@ -68,6 +70,10 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function statusBadge(summary) {
+  return `<span class="invoice-status-badge ${escapeHtml(summary.statusClassName)}" aria-label="${escapeHtml(summary.statusAccessibleLabel)}">${escapeHtml(summary.statusLabel)}</span>`;
 }
 
 function activeScope(form) {
@@ -126,6 +132,15 @@ function displayDateToIso(value) {
   return isRealDate ? `${year}-${month}-${day}` : '';
 }
 
+function displayDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('el-CY', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(date);
+}
+
 function formatDateFilterInput(input) {
   const digits = input.value.replace(/\D/g, '').slice(0, 8);
   input.value = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)]
@@ -144,7 +159,7 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
     <p class="feature-help">Το αρχείο αποθηκεύει πλήρες snapshot της φόρμας τη στιγμή της καταχώρισης.</p>
   `;
 
-  const registerButton = createButton('Καταχώριση στο Αρχείο', 'button button-primary');
+  const registerButton = document.getElementById('register-invoice');
   const downloadJsonButton = createButton('Λήψη του αρχείου μου', 'button button-secondary');
   const downloadCsvButton = createButton('Λήψη αναφοράς CSV', 'button button-secondary');
   const restoreButton = createButton('Επαναφορά προσωπικού αρχείου', 'button button-secondary');
@@ -214,7 +229,7 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
   tableWrap.className = 'table-scroll';
   tableWrap.append(table);
 
-  section.append(registerButton, archiveTools, privacyNote, restoreNote, archiveCount, filters, tableWrap, detail);
+  section.append(archiveTools, privacyNote, restoreNote, archiveCount, filters, tableWrap, detail);
 
   function labelControl(text, control) {
     const label = document.createElement('label');
@@ -262,8 +277,12 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
         <dt>Αριθμός</dt><dd>${escapeHtml(summary.fullInvoiceIdentifier)}</dd>
         <dt>Υπηρεσία</dt><dd>${escapeHtml(summary.serviceName || '-')}</dd>
         <dt>Κωδικός υπαλλήλου</dt><dd>${escapeHtml(summary.employeeCode || '-')}</dd>
-        <dt>Κατάσταση</dt><dd>${escapeHtml(summary.status)}</dd>
+        <dt>Κατάσταση</dt><dd>${statusBadge(summary)}</dd>
         <dt>Ημερομηνία έκδοσης</dt><dd>${escapeHtml(summary.issueDate)}</dd>
+        ${summary.status === 'cancelled' ? `
+        <dt>Ημερομηνία ακύρωσης</dt><dd>${escapeHtml(displayDateTime(record.cancelledAt) || '-')}</dd>
+        <dt>Λόγος ακύρωσης</dt><dd>${escapeHtml(record.cancellationReason || '-')}</dd>
+        ` : ''}
         <dt>Καταχώριση</dt><dd>${escapeHtml(record.createdAtDisplay)}</dd>
         <dt>Πελάτης</dt><dd>${escapeHtml(summary.debtorName || '-')}</dd>
         <dt>Περιγραφή</dt><dd>${escapeHtml(record.description || '-')}</dd>
@@ -293,13 +312,17 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
 
     filtered.forEach(record => {
       const summary = recordSummary(record);
+      const isCancelled = summary.status === 'cancelled';
+      const cancelledMeta = isCancelled
+        ? [displayDateTime(record.cancelledAt), record.cancellationReason].filter(Boolean).join(' - ')
+        : '';
       const row = document.createElement('tr');
       row.dataset.recordId = record.id;
       row.innerHTML = `
-        <td>${escapeHtml(summary.fullInvoiceIdentifier)}</td>
+        <td><span class="archive-invoice-number">${escapeHtml(summary.fullInvoiceIdentifier)}</span> ${statusBadge(summary)}</td>
         <td>${escapeHtml(summary.serviceName || '-')}</td>
         <td>${escapeHtml(summary.employeeCode || '-')}</td>
-        <td>${escapeHtml(summary.status)}</td>
+        <td>${statusBadge(summary)}${cancelledMeta ? `<br><small>${escapeHtml(cancelledMeta)}</small>` : ''}</td>
         <td>${escapeHtml(summary.issueDate)}</td>
         <td>${escapeHtml(summary.debtorName)}</td>
         <td>${escapeHtml(summary.debtorTaxId)}</td>
@@ -308,10 +331,10 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
         <td>${escapeHtml(summary.grossAmount)}</td>
         <td class="table-actions">
           <button type="button" class="template-button" data-action="view">Προβολή</button>
-          <button type="button" class="template-button" data-action="load">Φόρτωση</button>
+          ${isCancelled ? '' : '<button type="button" class="template-button" data-action="load">Φόρτωση</button>'}
           <button type="button" class="template-button" data-action="print">Εκτύπωση</button>
           <button type="button" class="template-button" data-action="pdf">Λήψη PDF</button>
-          <button type="button" class="template-button template-button-danger" data-action="delete">Διαγραφή</button>
+          ${isCancelled ? '' : '<button type="button" class="template-button template-button-danger" data-action="delete">Διαγραφή</button>'}
         </td>
       `;
       tbody.append(row);
@@ -399,6 +422,8 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
     }
     records = issued.records;
     selectedRecordId = issued.record.id;
+    form.dataset.invoiceStatus = 'issued';
+    form.dataset.loadedArchiveRecordId = issued.record.id || '';
     renderTable();
     window.dispatchEvent(new CustomEvent('invoice-archive:updated'));
     onFormUpdated?.(form);
@@ -407,7 +432,7 @@ export function createInvoiceArchivePanel({ form, renderOfficialTemplate, onForm
     return { ok: true, snapshot: issued.record };
   }
 
-  registerButton.addEventListener('click', async () => {
+  registerButton?.addEventListener('click', async () => {
     registerButton.disabled = true;
     try {
       const scope = activeScope(form);

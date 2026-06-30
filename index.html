@@ -193,8 +193,18 @@
     </section>
 
     <section class="preview-panel" aria-labelledby="preview-title">
+      <div id="active-invoice-status" class="active-invoice-status no-print" aria-live="polite">
+        <span id="active-invoice-status-number" class="active-invoice-number"></span>
+        <span id="active-invoice-status-badge" class="invoice-status-badge invoice-status-reserved" aria-label="Κατάσταση τιμολογίου: προσχέδιο, δεσμευμένο"></span>
+        <span id="active-invoice-status-sr" class="visually-hidden"></span>
+      </div>
       <div class="invoice-actions no-print" aria-label="Ενέργειες τιμολογίου">
-        <button id="clear-form" class="button button-secondary" type="button">Καθαρισμός</button>
+        <button id="clear-form" class="button button-secondary" type="button">Καθαρισμός πεδίων</button>
+        <button id="cancel-invoice" class="button btn-cancel-invoice" type="button">Ακύρωση Τιμολογίου</button>
+        <button id="register-invoice" class="button btn-finalize-invoice" type="button" aria-label="Οριστικοποίηση Τιμολογίου και Καταχώρηση στο Αρχείο Τιμολογίων">
+          <span>Οριστικοποίηση Τιμολογίου</span>
+          <span>και Καταχώρηση στο Αρχείο Τιμολογίων</span>
+        </button>
         <button id="print-form" class="button button-primary" type="button">Εκτύπωση / PDF</button>
         <button id="download-pdf" class="button button-primary" type="button">Λήψη PDF</button>
       </div>

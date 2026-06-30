@@ -150,6 +150,31 @@ function drawOverlayField(context, field, previewRect, scaleX, scaleY) {
   context.restore();
 }
 
+function drawCancelledWatermark(context, field, previewRect, scaleX, scaleY) {
+  const text = field.textContent ?? '';
+  if (!text.trim()) return;
+
+  const fieldRect = field.getBoundingClientRect();
+  const style = getComputedStyle(field);
+  const box = {
+    x: (fieldRect.left - previewRect.left) * scaleX,
+    y: (fieldRect.top - previewRect.top) * scaleY,
+    width: fieldRect.width * scaleX,
+    height: fieldRect.height * scaleY
+  };
+
+  context.save();
+  context.globalAlpha = Number.parseFloat(style.opacity) || 1;
+  context.fillStyle = style.color;
+  context.font = canvasFont(style, scaleX);
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.translate(box.x + box.width / 2, box.y + box.height / 2);
+  context.rotate(-24 * Math.PI / 180);
+  context.fillText(text, 0, 0, box.width);
+  context.restore();
+}
+
 export async function renderOfficialFormToJpeg(preview) {
   const template = preview?.querySelector('.form-template');
   if (!template) throw new Error('Official template image was not found.');
@@ -172,7 +197,11 @@ export async function renderOfficialFormToJpeg(preview) {
   context.drawImage(templateImage, 0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
 
   preview.querySelectorAll('.overlay-field').forEach(field => {
+    if (field.classList.contains('cancelled-invoice-watermark')) return;
     drawOverlayField(context, field, previewRect, scaleX, scaleY);
+  });
+  preview.querySelectorAll('.cancelled-invoice-watermark').forEach(field => {
+    drawCancelledWatermark(context, field, previewRect, scaleX, scaleY);
   });
 
   const jpegBlob = await canvasToBlob(canvas, 'image/jpeg', PDF_IMAGE_QUALITY);

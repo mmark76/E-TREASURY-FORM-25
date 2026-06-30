@@ -8,6 +8,7 @@ import {
   formatInvoiceSequenceNumber,
   parseInvoiceSequenceNumber
 } from '../../shared/invoice-number.js';
+import { getInvoiceStatusPresentation } from '../../shared/invoice-status.js';
 import { DEFAULT_ISSUER_UNIT_CODE, sanitizeServiceId } from '../../shared/service-identity.js';
 import { normalizeEmployeeCode } from '../../shared/employee-profile.js';
 
@@ -144,6 +145,7 @@ export function recordMatchesFilters(record, filters) {
 }
 
 export function recordSummary(record) {
+  const statusPresentation = getInvoiceStatusPresentation(record.status);
   return {
     serviceId: record.serviceId || '',
     serviceName: record.serviceName || '',
@@ -155,7 +157,10 @@ export function recordSummary(record) {
     invoiceNumber: record.formattedInvoiceNumber || padInvoiceNumber(record.invoiceNumber) || 'Χωρίς αριθμό',
     fullInvoiceIdentifier: record.fullInvoiceIdentifier || record.formattedInvoiceNumber || padInvoiceNumber(record.invoiceNumber) || 'Χωρίς αριθμό',
     shortInvoiceIdentifier: record.shortInvoiceIdentifier || record.formattedInvoiceNumber || padInvoiceNumber(record.invoiceNumber) || 'Χωρίς αριθμό',
-    status: record.status || 'issued',
+    status: statusPresentation.status,
+    statusLabel: statusPresentation.label,
+    statusClassName: statusPresentation.className,
+    statusAccessibleLabel: statusPresentation.accessibleLabel,
     issueDate: record.issueDate || '',
     debtorName: record.debtorName || '',
     debtorTaxId: record.debtorTaxId || '',

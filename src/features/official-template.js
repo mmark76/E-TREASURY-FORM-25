@@ -1,6 +1,7 @@
 import { calculateInvoice } from './calculations.js';
 import { amountToGreekWords } from './number-to-words.js';
 import { buildFullInvoiceIdentifier, buildShortInvoiceIdentifier } from '../shared/invoice-number.js';
+import { normalizeInvoiceStatus } from '../shared/invoice-status.js';
 import { DEFAULT_ISSUER_UNIT_CODE } from '../shared/service-identity.js';
 import { normalizeEmployeeCode } from '../shared/employee-profile.js';
 
@@ -50,6 +51,7 @@ const TEMPLATE_MARKUP = `
     <span class="overlay-field overlay-bottom-gross-euros" data-output="grossEuros"></span>
     <span class="overlay-field overlay-bottom-gross-cents" data-output="grossCents"></span>
     <span class="overlay-field overlay-revenue-account" data-output="revenueAccount"></span>
+    <span class="overlay-field cancelled-invoice-watermark" data-output="cancelledWatermark" aria-hidden="true"></span>
   </div>
 `;
 
@@ -249,6 +251,7 @@ export function renderOfficialTemplate() {
   const issuerUnitCode = getValue('issuerUnitCode') || DEFAULT_ISSUER_UNIT_CODE;
   const employeeCode = normalizeEmployeeCode(getValue('employeeCode'));
   const invoiceNumber = getValue('invoiceNumber');
+  const invoiceStatus = normalizeInvoiceStatus(document.getElementById('invoice-form')?.dataset.invoiceStatus);
 
   const values = {
     department: getValue('department'),
@@ -285,7 +288,8 @@ export function renderOfficialTemplate() {
     amountInWords: amountToGreekWords(calculation.grossAmount),
     signatoryName: getValue('signatoryName'),
     signDate: formatIssueDate(getValue('signDate')),
-    revenueAccount: getValue('revenueAccount')
+    revenueAccount: getValue('revenueAccount'),
+    cancelledWatermark: invoiceStatus === 'cancelled' ? 'ΑΚΥΡΩΜΕΝΟ' : ''
   };
 
   Object.entries(values).forEach(([key, value]) => setOutput(key, value));

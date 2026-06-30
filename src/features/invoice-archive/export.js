@@ -1,4 +1,5 @@
 import { APP_VERSION_LABEL } from '../../config/version.js';
+import { getInvoiceStatusPresentation } from '../../shared/invoice-status.js';
 
 function csvCell(value) {
   return `"${String(value ?? '').replace(/"/g, '""')}"`;
@@ -56,7 +57,7 @@ export function buildEmployeeArchiveCsv(records, { issuerUnitId, employeeId }) {
     record.netAmount,
     record.vatAmount,
     record.grossAmount,
-    record.status || 'issued'
+    getInvoiceStatusPresentation(record.status).label
   ]);
 
   return `\uFEFF${[headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n')}`;

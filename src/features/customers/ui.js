@@ -197,6 +197,7 @@ export function createCustomersPanel({ form, renderOfficialTemplate, onFormUpdat
 
     records.forEach(record => {
       const summary = recordSummary(record);
+      const isCancelled = summary.status === 'cancelled';
       const row = document.createElement('tr');
       row.dataset.recordId = record.id;
       row.innerHTML = `
@@ -208,7 +209,7 @@ export function createCustomersPanel({ form, renderOfficialTemplate, onFormUpdat
         <td>${escapeHtml(summary.grossAmount)}</td>
         <td class="table-actions">
           <button type="button" class="template-button" data-action="view">Προβολή</button>
-          <button type="button" class="template-button" data-action="load">Φόρτωση</button>
+          ${isCancelled ? '' : '<button type="button" class="template-button" data-action="load">Φόρτωση</button>'}
           <button type="button" class="template-button" data-action="print">Εκτύπωση</button>
           <button type="button" class="template-button" data-action="pdf">Λήψη PDF</button>
         </td>
@@ -251,6 +252,8 @@ export function createCustomersPanel({ form, renderOfficialTemplate, onFormUpdat
 
     setFormValues(form, record.formValues);
     form.dataset.customerId = record.customerId || selectedId || '';
+    form.dataset.invoiceStatus = record.status || 'issued';
+    form.dataset.loadedArchiveRecordId = record.id || '';
     renderOfficialTemplate();
     onFormUpdated?.(form);
 

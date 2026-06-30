@@ -34,6 +34,8 @@ import {
   validateEmployeeCode
 } from '../src/shared/employee-profile.js';
 import { buildEmployeeArchiveCsv, buildEmployeeArchiveExport } from '../src/features/invoice-archive/export.js';
+import { recordSummary } from '../src/features/invoice-archive/snapshot.js';
+import { getInvoiceStatusPresentation } from '../src/shared/invoice-status.js';
 
 const results = document.getElementById('results');
 const LEGACY_DEFAULT_SERVICE_ID = 'STATE-FAIR-SPACE-MANAGEMENT';
@@ -165,6 +167,16 @@ assertEqual('Full invoice identifier is blank without a valid invoice number', b
   invoiceNumber: ''
 }), '');
 
+const reservedStatus = getInvoiceStatusPresentation('reserved');
+const issuedStatus = getInvoiceStatusPresentation('issued');
+const cancelledStatus = getInvoiceStatusPresentation('cancelled');
+const legacyStatus = getInvoiceStatusPresentation(undefined);
+assertEqual('Reserved status has Greek label', reservedStatus.label, 'ΠΡΟΣΧΕΔΙΟ / ΔΕΣΜΕΥΜΕΝΟ');
+assertEqual('Reserved status has CSS class', reservedStatus.className, 'invoice-status-reserved');
+assertEqual('Issued status has Greek label', issuedStatus.label, 'ΕΚΔΟΘΕΝ / ΕΓΚΥΡΟ');
+assertEqual('Cancelled status has Greek label', cancelledStatus.label, 'ΑΚΥΡΩΜΕΝΟ / ΑΚΥΡΟ');
+assertEqual('Missing legacy status normalizes to issued', legacyStatus.status, 'issued');
+
 const employeeA = { issuerUnitId: DEFAULT_SERVICE_ID, employeeId: 'employee-a', employeeCode: 'ΜΜ', employeeName: 'Employee A' };
 const employeeB = { issuerUnitId: DEFAULT_SERVICE_ID, employeeId: 'employee-b', employeeCode: 'ΑΠ1', employeeName: 'Employee B' };
 let records = [record('a-1', { ...employeeA, invoiceNumber: 1 })];
@@ -280,6 +292,7 @@ const cancelledReservation = cancelActiveInvoiceReservation(employeeA, { reason:
 assert('Active reservation can be cancelled', cancelledReservation.ok && cancelledReservation.cancelled);
 assertEqual('Cancelled reservation is persisted', readInvoiceArchive().find(item => item.id === secondReservation.record.id).status, 'cancelled');
 assert('Cancelled reservation stores cancellation timestamp', Boolean(readInvoiceArchive().find(item => item.id === secondReservation.record.id).cancelledAt));
+assertEqual('Cancelled reservation stores cancellation reason', readInvoiceArchive().find(item => item.id === secondReservation.record.id).cancellationReason, 'test cancellation');
 const thirdReservation = reserveInvoiceNumber(employeeA, {
   issuerUnitCode: 'ΥΕΕΒ-ΥΕ-ΚΔΧΕ',
   issuerUnitName: 'Unit',
@@ -287,6 +300,24 @@ const thirdReservation = reserveInvoiceNumber(employeeA, {
   employeeName: employeeA.employeeName
 });
 assertEqual('Cancelled number is not reused', thirdReservation.record.formattedInvoiceNumber, '00003');
+
+localStorage.clear();
+const cancellationFailureReservation = reserveInvoiceNumber(employeeA, {
+  issuerUnitCode: 'ΥΕΕΒ-ΥΕ-ΚΔΧΕ',
+  issuerUnitName: 'Unit',
+  employeeCode: employeeA.employeeCode,
+  employeeName: employeeA.employeeName
+});
+const failingCancellationSetItem = Storage.prototype.setItem;
+Storage.prototype.setItem = (key, value) => {
+  if (key === 'eTreasury.form25.invoiceArchive.v1') throw new Error('simulated cancellation failure');
+  return failingCancellationSetItem.call(localStorage, key, value);
+};
+const failedCancellation = cancelActiveInvoiceReservation(employeeA, { reason: 'simulated failure' }, readInvoiceArchive());
+assert('Cancellation write failure is reported', !failedCancellation.ok && !failedCancellation.cancelled);
+Storage.prototype.setItem = failingCancellationSetItem;
+assertEqual('Failed cancellation keeps the active reservation', findActiveInvoiceReservation(employeeA, readInvoiceArchive()).id, cancellationFailureReservation.record.id);
+assertEqual('Failed cancellation keeps the number unavailable for reuse', readNextInvoiceNumber(employeeA, readInvoiceArchive()), 2);
 
 localStorage.clear();
 const failingReservationSetItem = Storage.prototype.setItem;
@@ -362,7 +393,9 @@ assertEqual('JSON export includes numbering state', exportPayload.numbering.next
 const csv = buildEmployeeArchiveCsv(exportRecords, employeeA);
 assert('CSV export includes UTF-8 BOM', csv.startsWith('\uFEFF'));
 assert('CSV export includes Greek full identifier', csv.includes('ΥΕΕΒ-ΥΕ-ΚΔΧΕ-ΜΜ / 00001'));
+assert('CSV export includes visible Greek status label', csv.includes('ΕΚΔΟΘΕΝ / ΕΓΚΥΡΟ'));
 assert('CSV export excludes other employee records', !csv.includes('ΥΕΕΒ-ΥΕ-ΚΔΧΕ-ΑΠ1 / 00001'));
+assertEqual('Legacy record summary normalizes missing status to issued', recordSummary(exportRecords[0]).statusLabel, 'ΕΚΔΟΘΕΝ / ΕΓΚΥΡΟ');
 
 assertEqual('Empty serviceId normalizes to the default', sanitizeServiceId(''), DEFAULT_SERVICE_ID);
 assertEqual('Previous default serviceId normalizes to the current default', sanitizeServiceId(LEGACY_DEFAULT_SERVICE_ID), DEFAULT_SERVICE_ID);
