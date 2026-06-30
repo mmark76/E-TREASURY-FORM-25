@@ -1,5 +1,5 @@
 export const APP_VERSION = 'v0.2.0';
-export const BUILD_TIMESTAMP = '29062026_2325';
-export const COMMIT_HASH = 'c339658';
+export const BUILD_TIMESTAMP = '30062026_1209';
+export const COMMIT_HASH = 'e57e506';
 export const APP_VERSION_LABEL =
-  `${APP_VERSION} \u00B7 ${BUILD_TIMESTAMP} \u00B7 ${COMMIT_HASH}`;
+  `${APP_VERSION} · ${BUILD_TIMESTAMP} · ${COMMIT_HASH}`;
